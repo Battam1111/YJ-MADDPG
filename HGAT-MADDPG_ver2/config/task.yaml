@@ -12,7 +12,6 @@ N_STEP_RETURN : 3
 # 动作设置
 DIMENSION_ACTION : [2, 2]                   # 动作值维度
 # DIMENSION_OBS : [180, 40]
-
 DIMENSION_OBS : [624, 40]                   # 全局dim
 
 # drone初始参数
