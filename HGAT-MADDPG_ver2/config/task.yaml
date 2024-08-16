@@ -11,9 +11,9 @@ N_STEP_RETURN : 3
 
 # 动作设置
 DIMENSION_ACTION : [2, 2]                   # 动作值维度
-DIMENSION_OBS : [180, 40]
+# DIMENSION_OBS : [180, 40]
 
-# DIMENSION_OBS : [624, 40]                   # 全局dim
+DIMENSION_OBS : [624, 40]                   # 全局dim
 
 # drone初始参数
 DEPARTURE_POS :  [-2, -2, 2]                # 起点坐标[[2, -5, 2], [4, 3, 2], [-4, -1, 2]] 
@@ -67,8 +67,8 @@ FENCE_COLOR : [1., 1., 1., 1.]            # 围墙颜色
 NUM_OBSTACLE : 6                          # 障碍物数量
 
 NUM_SIGNAL_POINT : 100                    # 信号点数量
-NUM_MAX_SENSED_SIGNAL_POINT : 26 
-# NUM_MAX_SENSED_SIGNAL_POINT : 100           #最多能感知到的信号点数量，原26
+# NUM_MAX_SENSED_SIGNAL_POINT : 26 
+NUM_MAX_SENSED_SIGNAL_POINT : 100           #最多能感知到的信号点数量，原26
 # DATA_TOTAL : 2000                        # 信号点数据总量
 SIGNAL_POINT_RADIUS : 0.1                 # 信号点半径
 SIGNAL_POINT_COLOR : [0., 0., 1., 1.]     # 信号点颜色
