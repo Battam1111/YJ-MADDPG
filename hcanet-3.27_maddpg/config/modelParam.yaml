@@ -1,0 +1,37 @@
+encoding_output_size : [128, 64]       # [critic, actor]
+graph_module_sizes : [[128], [64]]     # [critic, actor]
+action_hidden_size : [128, 64]         # [UAV, charger]
+BATCH_SIZE : 128                        # batch大小
+BATCH_ALPHA : 0.6
+MEMORY_SIZE : 100000                    # ReplayMemory大小(pow(2, 16))
+REPLAY_BUFFER_BETA : 0.6                # Prioritized Buffer beta
+
+
+N_EPISODES : 5000                       # 总EPISODES
+MAX_STEPS : 700                        # 每个EPISODE的最大STEPS
+EPISODES_BEFORE_TRAIN : 50             # 开始训练前，至少需要运行EPISODES_BEFORE_TRAIN个EPISODE
+SOFT_UPDATE_FREGUENCY : 50              # 每隔SOFT_UPDATE_FREGUENCY个step进行一次soft update
+ACTOR_UPDATA_FREQUENCY : 2              # actor更新频率
+OPTIMIZER : 'adam'
+CRITIC_LR : 0.001
+ACTOR_LR : 0.0001
+WEIGHT_DECAY : 0.003
+RMSPROP_ALPHA : 1
+RMSPROP_EPS : 1
+TRR_COEF : 1
+SHARE_ENCODING : True
+SHARE_COMMS : False
+ACR_ENCODEING : 'leakyrelu'
+ACT_COMMS : 'leakyrelu'
+ACT_ACTION : 'leakyrelu'
+GAMMA : 0.98
+TAU : 0.01
+full_receptive_field : False
+gat_n_heads : 1
+gat_average_last : True
+dropout : 0.1
+add_loops : False
+mixer : None 
+N_STEP : 3
+
+LOG_DIR : 'hcanet-3.27_maddpg/data/'

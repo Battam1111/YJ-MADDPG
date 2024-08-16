@@ -1,0 +1,103 @@
+[Errno 2] No such file or directory: 'config/task.yaml'Traceback (most recent call last):
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/train.py", line 383, in <module>
+    runner.run()
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/train.py", line 123, in run
+    current_state = self.env.reset()
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/env/sensingEnv.py", line 431, in reset
+    self.scene = Scence(physicsClientId=self._physics_client_id)
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/env/scene.py", line 16, in __init__
+    param_dict = load(open(param_path, "r", encoding="utf-8"), Loader=Loader)
+FileNotFoundError: [Errno 2] No such file or directory: 'config/task.yaml'
+[Errno 2] No such file or directory: 'env/data_signalPoint.npy'Traceback (most recent call last):
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/train.py", line 383, in <module>
+    runner.run()
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/train.py", line 123, in run
+    current_state = self.env.reset()
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/env/sensingEnv.py", line 433, in reset
+    self.scene.construct()
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/env/scene.py", line 134, in construct
+    data_signalPoint = load_origData("env/data_signalPoint.npy")
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/env/utils.py", line 304, in load_origData
+    data_signalPoint = np.load(save_path)
+  File "/home/star/anaconda3/envs/hmaddpg/lib/python3.10/site-packages/numpy/lib/npyio.py", line 405, in load
+    fid = stack.enter_context(open(os_fspath(file), "rb"))
+FileNotFoundError: [Errno 2] No such file or directory: 'env/data_signalPoint.npy'
+Cannot load file containing pickled data when allow_pickle=FalseTraceback (most recent call last):
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/train.py", line 383, in <module>
+    runner.run()
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/train.py", line 123, in run
+    current_state = self.env.reset()
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/env/sensingEnv.py", line 433, in reset
+    self.scene.construct()
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/env/scene.py", line 134, in construct
+    data_signalPoint = load_origData("hcanet-3.27_maddpg/config/task.yaml")
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/env/utils.py", line 304, in load_origData
+    data_signalPoint = np.load(save_path)
+  File "/home/star/anaconda3/envs/hmaddpg/lib/python3.10/site-packages/numpy/lib/npyio.py", line 438, in load
+    raise ValueError("Cannot load file containing pickled data "
+ValueError: Cannot load file containing pickled data when allow_pickle=False
+Failed to interpret file 'hcanet-3.27_maddpg/config/task.yaml' as a pickleTraceback (most recent call last):
+  File "/home/star/anaconda3/envs/hmaddpg/lib/python3.10/site-packages/numpy/lib/npyio.py", line 441, in load
+    return pickle.load(fid, **pickle_kwargs)
+_pickle.UnpicklingError: unpickling stack underflow
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/train.py", line 383, in <module>
+    runner.run()
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/train.py", line 123, in run
+    current_state = self.env.reset()
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/env/sensingEnv.py", line 433, in reset
+    self.scene.construct()
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/env/scene.py", line 134, in construct
+    data_signalPoint = load_origData("hcanet-3.27_maddpg/config/task.yaml")
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/env/utils.py", line 304, in load_origData
+    data_signalPoint = np.load(save_path, allow_pickle=True)
+  File "/home/star/anaconda3/envs/hmaddpg/lib/python3.10/site-packages/numpy/lib/npyio.py", line 443, in load
+    raise pickle.UnpicklingError(
+_pickle.UnpicklingError: Failed to interpret file 'hcanet-3.27_maddpg/config/task.yaml' as a pickle
+[Errno 2] No such file or directory: 'config'Traceback (most recent call last):
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/train.py", line 383, in <module>
+    runner.run()
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/train.py", line 123, in run
+    current_state = self.env.reset()
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/env/sensingEnv.py", line 453, in reset
+    Drone(
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/env/robot.py", line 16, in __init__
+    for file in os.listdir("config"):
+FileNotFoundError: [Errno 2] No such file or directory: 'config'
+[Errno 2] No such file or directory: 'config'Traceback (most recent call last):
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/train.py", line 383, in <module>
+    runner.run()
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/train.py", line 123, in run
+    current_state = self.env.reset()
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/env/sensingEnv.py", line 468, in reset
+    ChargeUAV(
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/env/robot.py", line 370, in __init__
+    for file in os.listdir("config"):
+FileNotFoundError: [Errno 2] No such file or directory: 'config'
+The expanded size of the tensor (524) must match the existing size (180) at non-singleton dimension 0.  Target sizes: [524].  Tensor sizes: [180]Traceback (most recent call last):
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/train.py", line 249, in <module>
+    runner.run()
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/train.py", line 100, in run
+    current_state = self.env.reset()
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/env/sensingEnv.py", line 484, in reset
+    global_x[index], adj[index] = robot.get_observation(UAV_pos, charger_pos, 0, None)
+RuntimeError: The expanded size of the tensor (524) must match the existing size (180) at non-singleton dimension 0.  Target sizes: [524].  Tensor sizes: [180]
+The expanded size of the tensor (524) must match the existing size (519) at non-singleton dimension 0.  Target sizes: [524].  Tensor sizes: [519]Traceback (most recent call last):
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/train.py", line 249, in <module>
+    runner.run()
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/train.py", line 120, in run
+    state_, reward, done, energy_consumption = self.env.step(actions, i_step, np.array(self.trajectory))
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/env/sensingEnv.py", line 360, in step
+    global_x[index], adj[index] = robot.get_observation(UAV_pos, charger_pos, curr_step, trajectory[:, index])
+RuntimeError: The expanded size of the tensor (524) must match the existing size (519) at non-singleton dimension 0.  Target sizes: [524].  Tensor sizes: [519]
+The expanded size of the tensor (519) must match the existing size (524) at non-singleton dimension 0.  Target sizes: [519].  Tensor sizes: [524]Traceback (most recent call last):
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/train.py", line 249, in <module>
+    runner.run()
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/train.py", line 100, in run
+    current_state = self.env.reset()
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/env/sensingEnv.py", line 484, in reset
+    global_x[index], adj[index] = robot.get_observation(UAV_pos, charger_pos, 0, None)
+RuntimeError: The expanded size of the tensor (519) must match the existing size (524) at non-singleton dimension 0.  Target sizes: [519].  Tensor sizes: [524]
