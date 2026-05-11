@@ -62,11 +62,12 @@ class Drone(object):
     """
     无人机（Drone）类，用于实现普通无人机的物理建模、动作执行、观测提取以及能量管理等功能
     """
-    def __init__(self, basePos: list = [0., 0., 0.], sence_loadItems: dict = None, signalPointId2data: dict = None, 
-                 physicsClientId: int = 0, device: str='cpu', index: int=-1):
+    def __init__(self, basePos: list = [0., 0., 0.], sence_loadItems: dict = None, signalPointId2data: dict = None,
+                 physicsClientId: int = 0, device: str='cpu', index: int=-1,
+                 override_config: dict = None):
         """
         初始化Drone类
-        
+
         参数:
             basePos: 初始位置（列表形式，例如 [x, y, z]）
             sence_loadItems: 环境中载入的物体（字典），如障碍物、围墙等
@@ -74,6 +75,11 @@ class Drone(object):
             physicsClientId: pybullet 物理客户端ID
             device: 设备（'cpu' 或 'cuda'）
             index: 无人机的索引编号（用于区分各个智能体）
+            override_config: dict, 可选, runtime overrides applied AFTER the
+                cached YAML defaults. Without this hook, CLI flags like
+                ``--view global`` (LASER_LENGTH=16.0) silently bypassed
+                Drone instances because we cache _load_robot_config() at
+                module load — fixed during the red-team audit on 2026-05-11.
         """
         self._physics_client_id = physicsClientId
         self.sence_loadItems = sence_loadItems
@@ -83,6 +89,9 @@ class Drone(object):
         # We attach via __dict__.update for speed; setattr in a Python loop was
         # ~12ms each call and ran 176 times per 30 env-steps before this fix.
         self.__dict__.update(_load_robot_config())
+        # Runtime CLI / programmatic overrides win over cached YAML defaults.
+        if override_config:
+            self.__dict__.update(override_config)
         # 创建无人机实体（使用球体表示）
         self.robot = addSphere(
             pos=basePos,
@@ -399,23 +408,28 @@ class ChargeUAV(object):
     """
     充电无人机（ChargeUAV）类，用于实现移动充电站的建模、动作执行、观测获取及充电逻辑
     """
-    def __init__(self, basePos: list = [0., 0., 0.], sence_loadItems: dict = None, 
-                 physicsClientId: int = 0, device: str='cpu', index: int=-1):
+    def __init__(self, basePos: list = [0., 0., 0.], sence_loadItems: dict = None,
+                 physicsClientId: int = 0, device: str='cpu', index: int=-1,
+                 override_config: dict = None):
         """
         初始化充电无人机
-        
+
         参数:
             basePos: 初始位置
             sence_loadItems: 环境中载入的物体（字典）
             physicsClientId: pybullet 客户端ID
             device: 设备（'cpu' 或 'cuda'）
             index: 充电无人机在整体智能体中的索引（通常在 NUM_DRONE 后开始编号）
+            override_config: dict, 可选, runtime overrides (same as Drone) so
+                ``--view global`` propagates correctly. See Drone docstring.
         """
         self.sence_loadItems = sence_loadItems
         self._physics_client_id = physicsClientId
         self.device = device
         # 从配置文件加载参数 (cached at module load — see _load_robot_config above).
         self.__dict__.update(_load_robot_config())
+        if override_config:
+            self.__dict__.update(override_config)
         # 创建充电无人机实体（使用球体，颜色采用充电桩颜色）
         self.robot = addSphere(
             pos=basePos,

@@ -12,20 +12,33 @@ class SensingEnv(gym.Env):
     """
     传感环境类，继承自 gym.Env
     """
-    def __init__(self, device, render: bool = False):
+    def __init__(self, device, render: bool = False, param_overrides=None):
         """
         初始化 SensingEnv 类
 
         参数:
             device (str): 设备类型，如 'cpu' 或 'cuda'
             render (bool): 是否渲染环境
+            param_overrides (dict, optional): runtime overrides applied AFTER
+                the yaml-derived defaults.  Set by PybulletRunner so that
+                CLI flags like ``--view global`` (LASER_LENGTH=16.0) actually
+                reach the env.  Without this, the YAML was the single source
+                of truth and overrides like LASER_LENGTH were silently
+                ignored — a real bug verified during the red-team audit.
         """
         # 加载配置文件
         param_path = "configs/_legacy/task.yaml"
         param_dict = load(open(param_path, "r", encoding="utf-8"), Loader=Loader)
         for key, value in param_dict.items():
             setattr(self, key, value)
-        
+        # Phase-D / red-team fix: apply overrides so env-internal knobs
+        # (LASER_LENGTH, NUM_DRONE, NUM_CHARGER, REWARD_*, etc.) reflect
+        # what the runner asked for.  We also stash them so reset() can
+        # pass them down to each Drone / ChargeUAV instance.
+        self._param_overrides = dict(param_overrides) if param_overrides else {}
+        for key, value in self._param_overrides.items():
+            setattr(self, key, value)
+
         self._render = render
         # 根据参数选择引擎的连接方式
         self._physics_client_id = p.connect(p.GUI if self._render else p.DIRECT)
@@ -488,7 +501,8 @@ class SensingEnv(gym.Env):
                     signalPointId2data=self.scene.signalPointId2data,
                     physicsClientId=self._physics_client_id,
                     device=self.device,
-                    index=i
+                    index=i,
+                    override_config=self._param_overrides,
                 )
             )
         for i in range(self.NUM_CHARGER):
@@ -498,7 +512,8 @@ class SensingEnv(gym.Env):
                     sence_loadItems=self.scene.load_items,
                     physicsClientId=self._physics_client_id,
                     device=self.device,
-                    index=i + self.NUM_DRONE
+                    index=i + self.NUM_DRONE,
+                    override_config=self._param_overrides,
                 )
             )
         UAV_pos = [list(p.getBasePositionAndOrientation(robot.robot)[0]) for robot in self.robot]

@@ -121,8 +121,12 @@ class PybulletRunner(ABC):
         save_path = "data/signal_points.npy"
         create_origData(save_path, self.param_dict["NUM_SIGNAL_POINT"], self.param_dict["RANDOM_SEED"])
 
-        # 4. 初始化环境：构造 SensingEnv（基于 PyBullet），传入设备与渲染参数
-        self.env = SensingEnv(self.device, render=if_render)
+        # 4. Init env. Forward the merged param_dict so CLI overrides (e.g.
+        # --view -> LASER_LENGTH) actually reach env attributes AND every
+        # Drone / ChargeUAV instance reset() spawns. Pre-fix the overrides
+        # were silently dropped because env + Drone read their own caches.
+        self.env = SensingEnv(self.device, render=if_render,
+                              param_overrides=self.param_dict)
         # 5. 初始化 TensorBoard 日志记录器，日志存放在检查点目录下
         self.writer = SummaryWriter(log_dir=self.checkpoint_dir)
         # 6. Derive node_types from config so E3-style scaling (more MUAV/CUAV)
