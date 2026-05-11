@@ -39,3 +39,7 @@ LOG_DIR : 'data/'
 # Phase C — Heterogeneous Component flags (E-abl)
 USE_TYPE_AWARE_BIAS : True   # Per-pair learnable bias in GAT attention
 NUM_NODE_TYPES      : 2      # MUAV (0) + CUAV (1)
+
+# Phase D speed knobs (E0 budget control)
+TRAIN_INTERVAL : 1       # 1 = paper-faithful; raise to 2-4 to cut update cost
+UPDATE_PER_TRAIN : 1     # gradient steps per training cycle

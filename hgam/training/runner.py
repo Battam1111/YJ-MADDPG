@@ -250,12 +250,21 @@ class PybulletRunner(ABC):
                     current_state = next_state
                     cur_adj = next_adj
 
-                # 5. 当训练期数达到 EPISODES_BEFORE_TRAIN 后，开始进行网络更新
+                # 5. 当训练期数达到 EPISODES_BEFORE_TRAIN 后，开始进行网络更新.
+                # TRAIN_INTERVAL throttles how often update() is called: HARL's
+                # off-policy runners use train_interval=50 by default; here we
+                # default to 1 (paper-faithful) and let CLI/config bump it up
+                # for E0 speedups. update_per_train (default 1) multiplies the
+                # number of gradient steps performed when an update DOES fire.
                 if self.episode_num > self.param_dict["EPISODES_BEFORE_TRAIN"]:
-                    critic_loss, policy_loss = self.controller.update(i_step, self.param_dict)
-                    total_critic_loss += np.array([c.cpu().detach().numpy() for c in critic_loss])
-                    if policy_loss is not None:
-                        total_policy_loss += np.array([p.cpu().detach().numpy() for p in policy_loss])
+                    train_interval = int(self.param_dict.get("TRAIN_INTERVAL", 1))
+                    update_per_train = int(self.param_dict.get("UPDATE_PER_TRAIN", 1))
+                    if self.step_num % train_interval == 0:
+                        for _ in range(update_per_train):
+                            critic_loss, policy_loss = self.controller.update(i_step, self.param_dict)
+                            total_critic_loss += np.array([c.cpu().detach().numpy() for c in critic_loss])
+                            if policy_loss is not None:
+                                total_policy_loss += np.array([p.cpu().detach().numpy() for p in policy_loss])
                     # 6. 每隔一定步数执行目标网络软更新
                     if self.step_num % self.param_dict["SOFT_UPDATE_FREGUENCY"] == 0:
                         self.controller.update_target_net()

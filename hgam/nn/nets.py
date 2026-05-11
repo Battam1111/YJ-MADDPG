@@ -183,26 +183,33 @@ class Actor_graph(torch.nn.Module):
 
    def forward(self, x):
       # x: current agent + neighbors. Shape [bs, 1 + n_neighbors, obs_dim].
-      edge_index = [[], []]
-      n_agents = x.shape[1]
-      for i in range(n_agents):
-         if i != 0:
-            edge_index[0].append(i)
-            edge_index[1].append(0)
-      edge_index = torch.tensor(edge_index, device=self.device)
+      # Phase-D optimization: replace torch_geometric Batch.from_data_list (which
+      # iterated bs times in Python, ~7ms per call) with a direct vectorized
+      # batched-graph construction. Equivalent numerically because every graph
+      # in the batch shares the same topology (n_agents nodes, n_agents-1
+      # directed edges from neighbours to node 0).
+      bs, n_agents = x.shape[0], x.shape[1]
+      device = self.device
 
-      data_list = []
-      bs = x.shape[0]
       if bs == 1:
-         x = x.squeeze()
+         # Single-graph fast path
+         x = x.squeeze(0)  # (n_agents, obs_dim)
+         edge_src = torch.arange(1, n_agents, device=device, dtype=torch.long)
+         edge_dst = torch.zeros(n_agents - 1, device=device, dtype=torch.long)
+         edge_index = torch.stack([edge_src, edge_dst], dim=0)
       else:
-         for i in range(bs):
-            dx = x[i]
-            data = Data(x=dx, edge_index=edge_index)
-            data_list.append(data)
-         loader = Batch.from_data_list(data_list)
-         x = loader.x
-         edge_index = loader.edge_index
+         # Batched: flatten to (bs * n_agents, obs_dim)
+         x = x.reshape(bs * n_agents, -1)
+         # Build batched edge_index: graph b has edges from
+         # (1+b*n_agents, 2+b*n_agents, ..., n_agents-1+b*n_agents) -> 0+b*n_agents.
+         src_template = torch.arange(1, n_agents, device=device, dtype=torch.long)
+         graph_offsets = (
+            torch.arange(bs, device=device, dtype=torch.long)
+            .repeat_interleave(n_agents - 1) * n_agents
+         )
+         src = src_template.repeat(bs) + graph_offsets
+         dst = graph_offsets  # all destinations are node 0 within each graph
+         edge_index = torch.stack([src, dst], dim=0)
 
       # Build the per-node type tensor.
       # When self.local_node_types is provided (Phase C), tile it across
@@ -372,24 +379,30 @@ class Critic(torch.nn.Module):
       #    self.mixer = VDNMixer()
 
    def forward(self, state, action, index):
-      edge_index = [[]]
-      x = torch.cat((state, action), 2)
-      # input = x[:, index, :self.features_by_node_class[self.node_type]]
+      # Phase-D optimization: replace torch_geometric Batch.from_data_list with
+      # direct vectorized construction. Every graph in the batch has the same
+      # topology (n_agents nodes, n_agents-1 edges from all-but-focal -> focal).
+      x = torch.cat((state, action), 2)         # (bs, n_agents, obs+act)
       bs = x.shape[0]
-      data_list = []
-      for i in range(self.n_agents):
-         if i != index:
-            edge_index[0].append(i)
-      edge_index.append([index]*(self.n_agents-1))
-      edge_index = torch.tensor(edge_index, device=self.device)
-      for i in range(bs):
-         dx = x[i].squeeze()
-         data = Data(x=dx, edge_index=edge_index)
-         data_list.append(data)
-      loader = Batch.from_data_list(data_list)
+      n_agents = self.n_agents
+      device = self.device
 
-      y = loader.x
-      edge_index_y = loader.edge_index
+      # Flatten: (bs * n_agents, obs+act)
+      y = x.reshape(bs * n_agents, -1)
+
+      # Build batched edge_index: in each graph b the edges go from
+      # [0..n_agents) \ {index} -> {index}, offset by b * n_agents.
+      src_template = torch.cat([
+         torch.arange(0, index, device=device, dtype=torch.long),
+         torch.arange(index + 1, n_agents, device=device, dtype=torch.long),
+      ])  # (n_agents - 1,)
+      graph_offsets = (
+         torch.arange(bs, device=device, dtype=torch.long)
+         .repeat_interleave(n_agents - 1) * n_agents
+      )
+      src = src_template.repeat(bs) + graph_offsets
+      dst = graph_offsets + index
+      edge_index_y = torch.stack([src, dst], dim=0)
 
       input_by_class = {}
       batch_node_types_encoding = self.node_types_encoding.repeat(bs)
