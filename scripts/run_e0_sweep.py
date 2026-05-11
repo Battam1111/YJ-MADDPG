@@ -45,12 +45,14 @@ def main() -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
-        "--method",
-        default="hgam",
+        "--methods",
+        nargs="+",
+        default=["hgam"],
         help=(
-            "Method label used in the run tag. Currently only 'hgam' is "
-            "implemented; future baselines (greedy, maddpg, maac, mappo, "
-            "hatd3, happo) will share this launcher once they land."
+            "One or more method identifiers passed as scripts/train.py "
+            "--method. Cartesian-producted with --views and --seeds. "
+            "Currently supported: hgam, maddpg, greedy. Pending: maac, "
+            "mappo, hatd3, happo."
         ),
     )
     parser.add_argument(
@@ -98,7 +100,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    runs = list(product([args.method], args.views, args.seeds))
+    runs = list(product(args.methods, args.views, args.seeds))
     print(f"[sweep] {len(runs)} runs total; concurrency={args.concurrency}; "
           f"episodes={args.episodes}; max-steps={args.max_steps}; "
           f"train_interval={args.train_interval}")
@@ -132,6 +134,7 @@ def main() -> int:
             tag = _tag_for(method, view, seed, args.episodes)
             log_path = log_root / f"{tag}.log"
             log_file = open(log_path, "w")
+            csv_path = f"results/{tag}.csv"
             cmd = [
                 args.python, "scripts/train.py",
                 "--device", args.device,
@@ -141,6 +144,8 @@ def main() -> int:
                 "--view", view,
                 "--tag", tag,
                 "--train-interval", str(args.train_interval),
+                "--method", method,
+                "--csv-path", csv_path,
             ]
             print(f"[{_now_min():5.1f}m] LAUNCH {tag}")
             print(f"           cmd: {' '.join(shlex.quote(c) for c in cmd)}")
