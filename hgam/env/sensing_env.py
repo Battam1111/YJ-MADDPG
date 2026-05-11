@@ -7,6 +7,7 @@ import numpy as np
 from hgam.env.scene import *
 from hgam.env.robot import *
 
+from hgam.metrics.fairness import urgency_factor as _urgency_factor_new, charging_fairness as _charging_fairness_new
 class SensingEnv(gym.Env):
     """
     传感环境类，继承自 gym.Env
@@ -220,15 +221,15 @@ class SensingEnv(gym.Env):
                         if robot.electricity > 1.1 or robot.charged_energy > 1:
                             iftoomuch = True
                         else:
-                            fairness_factor = sum(charged_energy_list)**2 / (self.NUM_DRONE * sum([c**2 for c in charged_energy_list]))
-                            urgency_factor = sum(min([1]*self.NUM_DRONE, remain_energy_list))**2 / (self.NUM_DRONE * sum([r**2 for r in min([1]*self.NUM_DRONE, remain_energy_list)]))
+                            fairness_factor = _charging_fairness_new(charged_energy_list)
+                            urgency_factor = _urgency_factor_new(remain_energy_list)
                             sum_factor = self.WEI * fairness_factor + (1-self.WEI) * urgency_factor
                             reward_current += self.REWARD_CHARGE * sum_factor
 
             sorted_id = sorted(range(len(remain_energy_list)), key=lambda k: remain_energy_list[k])
             distance = caculate_2D_distance(UAV_pos[sorted_id[0]], current_pos)
             if charger.status == 0 or iftoomuch:
-                reward_current += self.DIS_TO_CLOSEST_UAV * distance + self.ENERGY_TO_CLOSEST_UAV * remain_energy_list[sorted_id[0]]
+                reward_current -= self.DIS_TO_CLOSEST_UAV * distance + self.ENERGY_TO_CLOSEST_UAV * remain_energy_list[sorted_id[0]]
 
             ifenergybelow = (np.array(remain_energy_list) < self.ENERGY_SHREHOLD).astype(int)
             if sum(ifenergybelow) > 0:

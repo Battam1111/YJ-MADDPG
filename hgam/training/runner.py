@@ -40,6 +40,8 @@ from hgam.replay.replay import Transition
 from hgam.env.sensing_env import SensingEnv
 from hgam.env.utils import *
 
+from hgam.metrics.fairness import geographical_fairness, charging_fairness
+from hgam.metrics.legacy import geographical_fairness_buggy, charging_fairness_buggy
 class PybulletRunner(ABC):
     """
     PybulletRunner 类
@@ -329,7 +331,9 @@ class PybulletRunner(ABC):
                     dataCollected_percentage = robot_data_sensed / self.env.scene.data_total
                     print("dataCollected_percentage", dataCollected_percentage)
                     data_final = list(self.env.scene.signalPointId2data.values())
-                    fair = fairness(data_orig, data_final)
+                    fair_new = geographical_fairness(data_orig, data_final)
+                    fair_legacy = geographical_fairness_buggy(data_orig, data_final)
+                    fair = fair_new
                     print("fair", fair)
                     energy_usage = sum([robot.consumption_energy / (1 + robot.accumulated_charge_energy) for robot in self.env.robot]) / len(self.env.robot)
                     print("energy_usage", energy_usage)
@@ -337,7 +341,9 @@ class PybulletRunner(ABC):
                         print("charge_steps_ratio", charger.charge_steps / i_step)
                     accumulated_charge_energy_list = [robot.accumulated_charge_energy for robot in self.env.robot]
                     nor_accumulated_charge_energy_list = np.array([en / sum(accumulated_charge_energy_list) for en in accumulated_charge_energy_list])
-                    print("fair_charge", sum(nor_accumulated_charge_energy_list)**2 / (len(nor_accumulated_charge_energy_list) * sum(nor_accumulated_charge_energy_list**2)))
+                    fair_charge_new = charging_fairness(accumulated_charge_energy_list)
+                    fair_charge_legacy = charging_fairness_buggy(accumulated_charge_energy_list)
+                    print("fair_charge_new", fair_charge_new, "fair_charge_legacy", fair_charge_legacy)
                     break
 
 if __name__ == "__main__":
