@@ -272,24 +272,87 @@ class MADDPGController(ABC):
         else:
             raise ValueError('Invalid optimizer "{}"'.format(optimizer))
 
-        # 检查点加载
+        # 检查点加载.
+        # Phase D fix: the previous loader hardcoded actor1/actor2/charger_actor1
+        # keys, which (a) lost actor[2] forever in the 3M+2C default config and
+        # (b) blocked resumption for any other config. The new scheme uses
+        # uav_actor_<i> and charger_actor_<j> for arbitrary fleet sizes, plus
+        # critic / target critic state for full state restoration. Falls back
+        # to the legacy 3-key layout if it sees no new-style keys, so old
+        # checkpoints continue to load.
         if resume_run:
             load_path = get_load_path(checkpoint_file)
-            print('Loading from checkpoint...')
+            print(f'Loading from checkpoint: {load_path}')
             checkpoint = torch.load(load_path, map_location=self.device)
-            self.UAVAgent.actor[0].load_state_dict(checkpoint['actor1_state_dict'])
-            self.UAVAgent.actor[1].load_state_dict(checkpoint['actor2_state_dict'])
-            self.chargerAgent.actor[0].load_state_dict(checkpoint['charger_actor1_state_dict'])
+            self._restore_from_checkpoint(checkpoint)
 
-    def get_net_state_dicts(self):
+    def _restore_from_checkpoint(self, checkpoint: dict) -> None:
+        """Restore networks. Supports both new-style and legacy 3-key layouts."""
+        has_new = any(k.startswith("uav_actor_") for k in checkpoint)
+        if has_new:
+            for i in range(self.num_UAVAgents):
+                k = f"uav_actor_{i}"
+                if k in checkpoint:
+                    self.UAVAgent.actor[i].load_state_dict(checkpoint[k])
+            for j in range(self.num_chargerAgents):
+                k = f"charger_actor_{j}"
+                if k in checkpoint:
+                    self.chargerAgent.actor[j].load_state_dict(checkpoint[k])
+            if "uav_critic" in checkpoint:
+                self.UAVAgent.critic.load_state_dict(checkpoint["uav_critic"])
+            if "uav_target_critic" in checkpoint:
+                self.UAVAgent.target_critic.load_state_dict(checkpoint["uav_target_critic"])
+            if "charger_critic" in checkpoint:
+                self.chargerAgent.critic.load_state_dict(checkpoint["charger_critic"])
+            if "charger_target_critic" in checkpoint:
+                self.chargerAgent.target_critic.load_state_dict(checkpoint["charger_target_critic"])
+            for i in range(self.num_UAVAgents):
+                k = f"uav_target_actor_{i}"
+                if k in checkpoint:
+                    self.UAVAgent.target_actor[i].load_state_dict(checkpoint[k])
+            for j in range(self.num_chargerAgents):
+                k = f"charger_target_actor_{j}"
+                if k in checkpoint:
+                    self.chargerAgent.target_actor[j].load_state_dict(checkpoint[k])
+        else:
+            # Legacy 3-key layout (pre-Phase-D)
+            self.UAVAgent.actor[0].load_state_dict(checkpoint['actor1_state_dict'])
+            if self.num_UAVAgents >= 2 and 'actor2_state_dict' in checkpoint:
+                self.UAVAgent.actor[1].load_state_dict(checkpoint['actor2_state_dict'])
+            self.chargerAgent.actor[0].load_state_dict(checkpoint['charger_actor1_state_dict'])
+            print("[checkpoint] WARNING: loaded a pre-Phase-D checkpoint; only "
+                  "the first two UAV actors + first charger actor were "
+                  "available. Subsequent training runs will overwrite the "
+                  "incomplete weights once they save a new-style checkpoint.")
+
+    def get_net_state_dicts(self) -> dict:
+        """Build a checkpoint dict covering ALL agents.
+
+        Phase D fix: the previous version dropped UAV actors beyond index 1
+        and all chargers beyond index 0, which silently broke resumption for
+        the 3M+2C default config (the third UAV would resume with random
+        weights). The new scheme is fleet-size-agnostic.
         """
-        获取网络状态字典
-        """
-        return {
-            'actor1_state_dict': self.UAVAgent.actor[0].state_dict(),
-            'actor2_state_dict': self.UAVAgent.actor[1].state_dict(),
-            'charger_actor1_state_dict': self.chargerAgent.actor[0].state_dict()
-        }
+        ckpt: dict = {}
+        for i, actor in enumerate(self.UAVAgent.actor):
+            ckpt[f"uav_actor_{i}"] = actor.state_dict()
+            ckpt[f"uav_target_actor_{i}"] = self.UAVAgent.target_actor[i].state_dict()
+        for j, actor in enumerate(self.chargerAgent.actor):
+            ckpt[f"charger_actor_{j}"] = actor.state_dict()
+            ckpt[f"charger_target_actor_{j}"] = self.chargerAgent.target_actor[j].state_dict()
+        ckpt["uav_critic"] = self.UAVAgent.critic.state_dict()
+        ckpt["uav_target_critic"] = self.UAVAgent.target_critic.state_dict()
+        ckpt["charger_critic"] = self.chargerAgent.critic.state_dict()
+        ckpt["charger_target_critic"] = self.chargerAgent.target_critic.state_dict()
+        # Legacy alias for backward compatibility: if any old code path
+        # still expects actor1/actor2/charger_actor1, those keys remain.
+        if self.num_UAVAgents >= 1:
+            ckpt["actor1_state_dict"] = self.UAVAgent.actor[0].state_dict()
+        if self.num_UAVAgents >= 2:
+            ckpt["actor2_state_dict"] = self.UAVAgent.actor[1].state_dict()
+        if self.num_chargerAgents >= 1:
+            ckpt["charger_actor1_state_dict"] = self.chargerAgent.actor[0].state_dict()
+        return ckpt
     
     def save_checkpoint(self, step_num, n_episodes):
         """
