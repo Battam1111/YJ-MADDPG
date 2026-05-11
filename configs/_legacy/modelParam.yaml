@@ -34,7 +34,7 @@ add_loops : False
 mixer : None 
 N_STEP : 3
 
-LOG_DIR : 'HGAT-MADDPG_ver2/data/'
+LOG_DIR : 'data/'
 
 # Phase C — Heterogeneous Component flags (E-abl)
 USE_TYPE_AWARE_BIAS : True   # Per-pair learnable bias in GAT attention
