@@ -91,6 +91,25 @@ def main() -> None:
             "speedup; HARL's MADDPG runner defaults to 50."
         ),
     )
+    parser.add_argument(
+        "--method",
+        default="hgam",
+        choices=["hgam", "maddpg", "greedy"],
+        help=(
+            "Controller class to use. 'hgam' (default) and 'maddpg' both "
+            "map to MADDPGController. 'greedy' is the rule-based "
+            "deterministic baseline. MAAC / MAPPO / HATD3 / HAPPO are "
+            "pending."
+        ),
+    )
+    parser.add_argument(
+        "--csv-path",
+        default=None,
+        help=(
+            "If set, append per-episode metrics to this CSV file. Used by "
+            "the E0 sweep to aggregate results. Default = no CSV."
+        ),
+    )
     args = parser.parse_args()
 
     ensure_runtime_dirs()
@@ -123,6 +142,8 @@ def main() -> None:
         device=device,
         overrides=overrides or None,
         run_tag=args.tag,
+        method=args.method,
+        csv_path=args.csv_path,
     )
 
     if args.mode == "train":

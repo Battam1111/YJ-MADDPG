@@ -49,7 +49,8 @@ class PybulletRunner(ABC):
     本类整合了基于 PyBullet 的多智能体仿真环境与 MADDPG 控制器，
     实现训练与评估全流程，包括配置加载、环境初始化、训练循环、日志记录及检查点保存。
     """
-    def __init__(self, resume_run, if_render, device='cpu', overrides=None, run_tag=None):
+    def __init__(self, resume_run, if_render, device='cpu', overrides=None,
+                 run_tag=None, method="hgam", csv_path=None):
         """
         初始化 PybulletRunner 对象
 
@@ -61,7 +62,19 @@ class PybulletRunner(ABC):
                         CLI 控制 N_EPISODES / MAX_STEPS / RANDOM_SEED 等
             run_tag:    str 可选, 当不为 None 时, checkpoint 目录命名为
                         {LOG_DIR}/logs/{run_tag}/, 便于多次实验区分 (E0 70 runs 用)
+            method:     str, controller class to use. "hgam" / "maddpg" both
+                        map to MADDPGController (the GAT-augmented MADDPG that
+                        is also the paper's HGAM method). "greedy" maps to the
+                        rule-based deterministic baseline. Other identifiers
+                        will raise ValueError until their controllers land.
+            csv_path:   str, optional path to a per-episode CSV file. When
+                        set, end-of-episode metrics (C, omega_new, omega_legacy,
+                        upsilon, D, F_new, F_legacy, episode_length,
+                        collision_count, total_reward) are appended for E0
+                        aggregation. Method/seed/config/view columns are
+                        derived from param_dict + overrides.
         """
+        self.method = str(method).lower()
         # 1. 加载配置文件，将 config 目录下所有 YAML 文件参数合并到 param_dict 中
         self.param_dict = {}
         config_dir = "configs/_legacy"
@@ -120,43 +133,81 @@ class PybulletRunner(ABC):
         self.node_types = [0] * n_muav + [1] * n_cuav
         # 7. 定义每隔多少个 episode 保存一次检查点
         self.checkpoint_save_episodes = 100
-        # 8. 初始化多智能体控制器：使用 MADDPGController 实现深度确定性策略梯度算法
-        self.controller = MADDPGController(
-            self.checkpoint_file,
-            self.checkpoint_dir,
-            self.param_dict["OPTIMIZER"],
-            self.param_dict["CRITIC_LR"],
-            self.param_dict["ACTOR_LR"],
-            self.param_dict["WEIGHT_DECAY"],
-            self.param_dict["RMSPROP_ALPHA"],
-            self.param_dict["RMSPROP_EPS"],
-            self.param_dict["NUM_DRONE"],
-            self.param_dict["NUM_CHARGER"],
-            self.node_types,
-            self.param_dict["DIMENSION_OBS"],
-            self.param_dict["DIMENSION_ACTION"],
-            self.param_dict["encoding_output_size"],
-            self.param_dict["graph_module_sizes"],
-            self.param_dict["action_hidden_size"],
-            self.param_dict["SHARE_ENCODING"],
-            self.param_dict["ACR_ENCODEING"],
-            self.param_dict["ACT_COMMS"],
-            self.param_dict["ACT_ACTION"],
-            self.param_dict["GAMMA"],
-            self.param_dict["TAU"],
-            self.device,
-            resume_run,
-            self.param_dict["MEMORY_SIZE"],
-            self.param_dict["full_receptive_field"],
-            self.param_dict["gat_n_heads"],
-            self.param_dict["gat_average_last"],
-            self.param_dict["dropout"],
-            self.param_dict["add_loops"],
-            # Phase C parametrization. These keys may be absent in older
-            # configs; .get() falls back to the pre-Phase-C behavior.
-            use_type_aware_bias=self.param_dict.get("USE_TYPE_AWARE_BIAS", False),
-            num_node_types=self.param_dict.get("NUM_NODE_TYPES", 2),
-        )
+        # 8. Controller dispatch.  ``method`` selects the algorithm; this is
+        #    where new baselines (MAAC, MAPPO, HATD3, HAPPO, ...) plug in.
+        if self.method in ("hgam", "maddpg"):
+            # HGAM and MADDPG share the controller class.  Whether GAT is
+            # used at all and whether the type-aware bias fires is governed
+            # by the SHARE_ENCODING / USE_TYPE_AWARE_BIAS config flags,
+            # which the E-abl variants set differently.
+            self.controller = MADDPGController(
+                self.checkpoint_file,
+                self.checkpoint_dir,
+                self.param_dict["OPTIMIZER"],
+                self.param_dict["CRITIC_LR"],
+                self.param_dict["ACTOR_LR"],
+                self.param_dict["WEIGHT_DECAY"],
+                self.param_dict["RMSPROP_ALPHA"],
+                self.param_dict["RMSPROP_EPS"],
+                self.param_dict["NUM_DRONE"],
+                self.param_dict["NUM_CHARGER"],
+                self.node_types,
+                self.param_dict["DIMENSION_OBS"],
+                self.param_dict["DIMENSION_ACTION"],
+                self.param_dict["encoding_output_size"],
+                self.param_dict["graph_module_sizes"],
+                self.param_dict["action_hidden_size"],
+                self.param_dict["SHARE_ENCODING"],
+                self.param_dict["ACR_ENCODEING"],
+                self.param_dict["ACT_COMMS"],
+                self.param_dict["ACT_ACTION"],
+                self.param_dict["GAMMA"],
+                self.param_dict["TAU"],
+                self.device,
+                resume_run,
+                self.param_dict["MEMORY_SIZE"],
+                self.param_dict["full_receptive_field"],
+                self.param_dict["gat_n_heads"],
+                self.param_dict["gat_average_last"],
+                self.param_dict["dropout"],
+                self.param_dict["add_loops"],
+                use_type_aware_bias=self.param_dict.get("USE_TYPE_AWARE_BIAS", False),
+                num_node_types=self.param_dict.get("NUM_NODE_TYPES", 2),
+            )
+        elif self.method == "greedy":
+            from hgam.algorithms.greedy import GreedyController
+            self.controller = GreedyController(
+                env=self.env,
+                num_UAVAgents=self.param_dict["NUM_DRONE"],
+                num_chargerAgents=self.param_dict["NUM_CHARGER"],
+                device=self.device,
+                dim_action=self.param_dict["DIMENSION_ACTION"][0],
+            )
+        else:
+            raise ValueError(
+                f"Unknown method '{method}'. Supported: hgam, maddpg, greedy. "
+                f"MAAC / MAPPO / HATD3 / HAPPO baselines are pending."
+            )
+
+        # 9. Per-episode CSV logger (paper-agent schema).
+        if csv_path is not None:
+            from hgam.utils.csv_logger import CSVEpisodeLogger
+            view_label = (
+                "local" if float(self.param_dict.get("LASER_LENGTH", 4.0)) <= 8.0
+                else "global"
+            )
+            config_label = (
+                f"{int(self.param_dict['NUM_DRONE'])}m{int(self.param_dict['NUM_CHARGER'])}c"
+            )
+            self.csv_logger = CSVEpisodeLogger(
+                path=csv_path,
+                method=self.method,
+                seed=int(self.param_dict["RANDOM_SEED"]),
+                config=config_label,
+                view=view_label,
+            )
+        else:
+            self.csv_logger = None
 
     def sample_from_memory(self):
         """
@@ -220,6 +271,8 @@ class PybulletRunner(ABC):
             total_policy_loss = np.array([0, 0], dtype=np.float32)
             episode_reward = np.zeros((self.param_dict["NUM_DRONE"] + self.param_dict["NUM_CHARGER"]))
             self.step_num = 0
+            # Phase D CSV logger: per-episode collision count for the safety metric column
+            episode_collisions = 0
             
             # 每个 episode 内部循环
             for i_step in range(self.param_dict["MAX_STEPS"]):
@@ -235,6 +288,15 @@ class PybulletRunner(ABC):
                 # 3. 环境一步仿真，获得下一状态、邻接矩阵、奖励、done标志、能量消耗
                 state_, adj_, reward, done, energy_consumption = self.env.step(actions, i_step, np.array(self.trajectory))
                 self.np_all_energy_consumption += energy_consumption
+                # Track collisions for the safety metric (paper-agent CSV column).
+                # The env's check_collision is already invoked inside step() to
+                # set done; we just count how many agents hit something this step.
+                for robot in self.env.robot:
+                    if robot.collision_check():
+                        episode_collisions += 1
+                for charger in self.env.charger:
+                    if charger.collision_check():
+                        episode_collisions += 1
 
                 if i_step != self.param_dict["MAX_STEPS"] - 1:
                     next_state = state_
@@ -310,6 +372,48 @@ class PybulletRunner(ABC):
             self.writer.add_scalar('dataCollected_percentage', dataCollected_percentage, self.episode_num)
             print(f'Episode:{self.episode_num}, step_num={self.step_num}, reward={episode_reward}, critic_loss={cr_lo}, policy_loss={po_lo}, dataCollected_percentage={dataCollected_percentage}, time={datetime.now() - time_start}')
             print("---------------------------------------------------------------------------")
+
+            # Phase D CSV logger: write paper-agent's schema row.
+            # Computes new + legacy variants of the fairness metrics so the
+            # Response Letter for R2#8 can quantify the divergence.
+            if self.csv_logger is not None:
+                from hgam.metrics.fairness import (
+                    geographical_fairness, charging_fairness,
+                )
+                from hgam.metrics.legacy import (
+                    geographical_fairness_buggy, charging_fairness_buggy,
+                )
+                charge_acc_list = [robot.accumulated_charge_energy for robot in self.env.robot]
+                charger_steps = sum(c.charge_steps for c in self.env.charger)
+                try:
+                    F_new = charging_fairness(charge_acc_list)
+                except Exception:
+                    F_new = float("nan")
+                try:
+                    F_legacy = charging_fairness_buggy(charge_acc_list)
+                except Exception:
+                    F_legacy = float("nan")
+                try:
+                    omega_new = geographical_fairness(data_orig, data_final)
+                except Exception:
+                    omega_new = float("nan")
+                try:
+                    omega_legacy = geographical_fairness_buggy(data_orig, data_final)
+                except Exception:
+                    omega_legacy = float("nan")
+                self.csv_logger.log_row(
+                    episode=self.episode_num,
+                    C=float(dataCollected_percentage),
+                    omega_new=float(omega_new),
+                    omega_legacy=float(omega_legacy),
+                    upsilon=float(energyEfficiency),
+                    D=float(charger_steps / max(self.step_num, 1)),
+                    F_new=float(F_new),
+                    F_legacy=float(F_legacy),
+                    episode_length=int(self.step_num),
+                    collision_count=int(episode_collisions),
+                    total_reward=float(np.sum(episode_reward)),
+                )
             # 清理 CUDA 内存，防止内存泄漏
             torch.cuda.empty_cache()
 
