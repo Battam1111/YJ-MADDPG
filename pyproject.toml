@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hgam"
+version = "0.2.0.dev0"
+description = "Heterogeneous Graph Attention Multi-agent DDPG for UAV coordination (IEEE TVT VT-2025-07369)"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "Proprietary"}
+authors = [
+    {name = "Battam1111"},
+]
+keywords = ["MARL", "UAV", "graph-attention", "multi-agent", "reinforcement-learning"]
+
+[tool.setuptools.packages.find]
+include = ["hgam*"]
+exclude = ["_archive*", "tests*", "scripts*", "configs*"]
