@@ -69,6 +69,28 @@ def main() -> None:
             "E0 sweeps will pass tags like 'hgam_local_seed0' etc."
         ),
     )
+    parser.add_argument(
+        "--view",
+        choices=["local", "global"],
+        default=None,
+        help=(
+            "Observation view scope. 'local' sets LASER_LENGTH=4.0 (the "
+            "paper's local-view baseline, default); 'global' sets "
+            "LASER_LENGTH=16.0 (full arena, used for the local-vs-global "
+            "paradox analysis in S6.3)."
+        ),
+    )
+    parser.add_argument(
+        "--train-interval",
+        type=int,
+        default=None,
+        help=(
+            "Override TRAIN_INTERVAL: how many env steps between update() "
+            "calls. 1 = paper-faithful (update every step). Setting 2-4 "
+            "trades some sample efficiency for proportional wall-clock "
+            "speedup; HARL's MADDPG runner defaults to 50."
+        ),
+    )
     args = parser.parse_args()
 
     ensure_runtime_dirs()
@@ -87,6 +109,13 @@ def main() -> None:
         overrides["MAX_STEPS"] = args.max_steps
     if args.seed is not None:
         overrides["RANDOM_SEED"] = args.seed
+    if args.view is not None:
+        # 'local' and 'global' both refer to the LASER_LENGTH knob that controls
+        # how far each UAV can sense for neighbour / PoI features. The paper
+        # baseline uses 4.0 for local and 16.0 (= full arena width) for global.
+        overrides["LASER_LENGTH"] = 4.0 if args.view == "local" else 16.0
+    if args.train_interval is not None:
+        overrides["TRAIN_INTERVAL"] = args.train_interval
 
     runner = PybulletRunner(
         resume_run=args.resume,
