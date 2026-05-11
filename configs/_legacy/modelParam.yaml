@@ -19,7 +19,7 @@ WEIGHT_DECAY : 0.003
 RMSPROP_ALPHA : 1
 RMSPROP_EPS : 1
 TRR_COEF : 1
-SHARE_ENCODING : True
+SHARE_ENCODING : False
 SHARE_COMMS : False
 ACR_ENCODEING : 'leakyrelu'
 ACT_COMMS : 'leakyrelu'
@@ -35,3 +35,7 @@ mixer : None
 N_STEP : 3
 
 LOG_DIR : 'HGAT-MADDPG_ver2/data/'
+
+# Phase C — Heterogeneous Component flags (E-abl)
+USE_TYPE_AWARE_BIAS : True   # Per-pair learnable bias in GAT attention
+NUM_NODE_TYPES      : 2      # MUAV (0) + CUAV (1)

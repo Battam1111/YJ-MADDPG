@@ -100,8 +100,12 @@ class PybulletRunner(ABC):
         self.env = SensingEnv(self.device, render=if_render)
         # 5. 初始化 TensorBoard 日志记录器，日志存放在检查点目录下
         self.writer = SummaryWriter(log_dir=self.checkpoint_dir)
-        # 6. 定义智能体类型数组：本例中3架 UAV（类型 0）与2架充电器（类型 1）
-        self.node_types = [0, 0, 0, 1, 1]
+        # 6. Derive node_types from config so E3-style scaling (more MUAV/CUAV)
+        #    doesn't need code edits. Pre-Phase-C the [0,0,0,1,1] list was
+        #    hardcoded for the 3M+2C default; that breaks any other configuration.
+        n_muav = int(self.param_dict["NUM_DRONE"])
+        n_cuav = int(self.param_dict["NUM_CHARGER"])
+        self.node_types = [0] * n_muav + [1] * n_cuav
         # 7. 定义每隔多少个 episode 保存一次检查点
         self.checkpoint_save_episodes = 100
         # 8. 初始化多智能体控制器：使用 MADDPGController 实现深度确定性策略梯度算法
@@ -135,7 +139,11 @@ class PybulletRunner(ABC):
             self.param_dict["gat_n_heads"],
             self.param_dict["gat_average_last"],
             self.param_dict["dropout"],
-            self.param_dict["add_loops"]
+            self.param_dict["add_loops"],
+            # Phase C parametrization. These keys may be absent in older
+            # configs; .get() falls back to the pre-Phase-C behavior.
+            use_type_aware_bias=self.param_dict.get("USE_TYPE_AWARE_BIAS", False),
+            num_node_types=self.param_dict.get("NUM_NODE_TYPES", 2),
         )
 
     def sample_from_memory(self):

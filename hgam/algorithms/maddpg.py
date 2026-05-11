@@ -122,7 +122,12 @@ class MADDPGController(ABC):
                  gat_n_heads: int = 1,
                  gat_average_last: bool = False,
                  dropout: int = 0,
-                 add_self_loops: bool = True):
+                 add_self_loops: bool = True,
+                 # Phase C parametrization for E-abl variants. Defaults
+                 # preserve the pre-Phase-C behavior so the smoke test
+                 # against the original-style config still passes.
+                 use_type_aware_bias: bool = False,
+                 num_node_types: int = 2):
         """
         初始化MADDPG控制器
         参数:
@@ -172,10 +177,22 @@ class MADDPGController(ABC):
         self.OUNoise = OUNoise(self.dim_UAVactions)
         self.var = [1. for _ in range(num_UAVAgents+num_chargerAgents)]
 
+        # Phase C: per-agent-group local-graph node types.
+        # The MUAV actor sees its local graph as [self=MUAV, nearest UAV
+        # neighbour, nearest CUAV neighbour] -> types [0, 0, 1]. The CUAV
+        # actor sees only [self=CUAV, nearest UAV] -> [1, 0]. These are
+        # fixed by the choose_neighbor_for_actor topology below; if that
+        # topology changes (e.g. for E3 scalability with more neighbour
+        # slots), update these tensors in lockstep.
+        uav_local_types = [0, 0, 1]
+        cuav_local_types = [1, 0]
+        self.use_type_aware_bias = use_type_aware_bias
+        self.num_node_types = num_node_types
+
         # 初始化无人机和充电器智能体
-        self.UAVAgent = MADDPGAgent(0, 
+        self.UAVAgent = MADDPGAgent(0,
                                     node_types,
-                                    dim_obs_list, 
+                                    dim_obs_list,
                                     dim_act_list,
                                     num_UAVAgents,
                                     encoding_output_size,
@@ -190,7 +207,10 @@ class MADDPGController(ABC):
                                     gat_n_heads,
                                     gat_average_last,
                                     dropout,
-                                    add_self_loops)
+                                    add_self_loops,
+                                    use_type_aware_bias=use_type_aware_bias,
+                                    num_node_types=num_node_types,
+                                    actor_local_node_types=uav_local_types)
         self.chargerAgent = MADDPGAgent(1,
                                         node_types,
                                         dim_obs_list,
@@ -208,7 +228,10 @@ class MADDPGController(ABC):
                                         gat_n_heads,
                                         gat_average_last,
                                         dropout,
-                                        add_self_loops)
+                                        add_self_loops,
+                                        use_type_aware_bias=use_type_aware_bias,
+                                        num_node_types=num_node_types,
+                                        actor_local_node_types=cuav_local_types)
 
         self.shared_modules = [self.UAVAgent.critic]
         self.memory = ReplayMemory(memory_size, self.num_UAVAgents+num_chargerAgents, True, self.dim_UAVobs, self.dim_UAVactions, True, 3, 0.95)

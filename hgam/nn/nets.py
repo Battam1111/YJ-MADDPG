@@ -9,14 +9,15 @@ import torch.nn.functional as F
 from hgam.nn.action_layers import CriticLayer, HeteroMAGNetActionLayer, ActorLayer
 from hgam.nn.encoding import EncoderByType
 from hgam.nn.gat import GATModule
+from hgam.nn.gat_typeaware import TypeAwareGATModule
 from hgam.nn.mixing import VDNMixer
 import numpy as np
 
 class MADDPGAgent(torch.nn.Module):
-   def __init__(self, 
-                node_type:int, 
+   def __init__(self,
+                node_type:int,
                 node_types:list,
-                dim_obs_list:list, 
+                dim_obs_list:list,
                 dim_act_list:list,
                 n_agents:int,
                 encoding_output_size:list,
@@ -31,76 +32,60 @@ class MADDPGAgent(torch.nn.Module):
                 gat_n_heads,
                 gat_average_last,
                 dropout,
-                add_self_loops):
+                add_self_loops,
+                # Phase C parametrization. Defaults preserve pre-Phase-C behavior.
+                use_type_aware_bias: bool = False,
+                num_node_types: int = 2,
+                actor_local_node_types=None):
       super().__init__()
       dim_obs_act_list = [sum(x) for x in zip(dim_obs_list, dim_act_list)]
-      self.actor = [Actor_graph(share_encoding,
-                        dim_obs_list,
-                        node_type,
-                        dim_act_list[node_type],
-                        encoding_output_size[1],
-                        graph_hidden_size[1],
-                        action_hidden_size[node_type],
-                        act_encoding,
-                        act_comms,
-                        act_action,
-                        device,
-                        full_receptive_field,
-                        gat_n_heads,
-                        gat_average_last,
-                        dropout,
-                        add_self_loops) for _ in range(n_agents)]
-      # self.actor = [Actor(dim_obs_list[0],dim_act,device) for _ in range(n_agents)]
-      self.critic = Critic(share_encoding,
-                           dim_obs_act_list,
-                           node_type,
-                           node_types,
-                           encoding_output_size[0],
-                           graph_hidden_size[0],
-                           action_hidden_size[node_type],
-                           act_encoding,
-                           act_comms,
-                           act_action,
-                           device,
-                           full_receptive_field,
-                           gat_n_heads,
-                           gat_average_last,
-                           dropout,
-                           add_self_loops)
-      self.target_actor = [Actor_graph(share_encoding,
-                                       dim_obs_list,
-                                       node_type,
-                                       dim_act_list[node_type],
-                                       encoding_output_size[1],
-                                       graph_hidden_size[1],
-                                       action_hidden_size[node_type],
-                                       act_encoding,
-                                       act_comms,
-                                       act_action,
-                                       device,
-                                       full_receptive_field,
-                                       gat_n_heads,
-                                       gat_average_last,
-                                       dropout,
-                                       add_self_loops) for _ in range(n_agents)]
-      # self.target_actor = [Actor(dim_obs_list[0],dim_act,device) for _ in range(n_agents)]
 
-      self.target_critic = Critic(share_encoding,
-                                  dim_obs_act_list,
-                                  node_type,
-                                  node_types,
-                                  encoding_output_size[0],
-                                  graph_hidden_size[0],
-                                  action_hidden_size[node_type],
-                                  act_encoding,
-                                  act_comms,
-                                  act_action,
-                                  device,
-                                  full_receptive_field,
-                                  gat_n_heads,
-                                  gat_average_last,
-                                  dropout,
-                                  add_self_loops)
+      def _make_actor():
+         return Actor_graph(share_encoding,
+                            dim_obs_list,
+                            node_type,
+                            dim_act_list[node_type],
+                            encoding_output_size[1],
+                            graph_hidden_size[1],
+                            action_hidden_size[node_type],
+                            act_encoding,
+                            act_comms,
+                            act_action,
+                            device,
+                            full_receptive_field,
+                            gat_n_heads,
+                            gat_average_last,
+                            dropout,
+                            add_self_loops,
+                            use_type_aware_bias=use_type_aware_bias,
+                            num_node_types=num_node_types,
+                            local_node_types=actor_local_node_types)
+
+      def _make_critic():
+         return Critic(share_encoding,
+                       dim_obs_act_list,
+                       node_type,
+                       node_types,
+                       encoding_output_size[0],
+                       graph_hidden_size[0],
+                       action_hidden_size[node_type],
+                       act_encoding,
+                       act_comms,
+                       act_action,
+                       device,
+                       full_receptive_field,
+                       gat_n_heads,
+                       gat_average_last,
+                       dropout,
+                       add_self_loops,
+                       use_type_aware_bias=use_type_aware_bias,
+                       num_node_types=num_node_types)
+
+      self.actor = [_make_actor() for _ in range(n_agents)]
+      self.critic = _make_critic()
+      self.target_actor = [_make_actor() for _ in range(n_agents)]
+      self.target_critic = _make_critic()
+
       for i in range(n_agents):
          self.target_actor[i].load_state_dict(self.actor[i].state_dict())
       self.target_critic.load_state_dict(self.critic.state_dict())
@@ -122,38 +107,73 @@ class Actor_graph(torch.nn.Module):
                 gat_n_heads: int = 1,
                 gat_average_last: bool = False,
                 dropout: int = 0,
-                add_self_loops: bool = True
+                add_self_loops: bool = True,
+                # Phase C parametrization for the E-abl ablation. Defaults
+                # preserve the pre-Phase-C behavior so older callers stay green.
+                use_type_aware_bias: bool = False,
+                num_node_types: int = 2,
+                local_node_types=None,
                 ):
       super().__init__()
 
       self.device = device
       # NOTE this assumes all agents have the same number of actions
       self.dim_actions = dim_actions
-      # if share_encoding:
-      #    self.features_by_node_class = [features_by_node_class[0]] #[195]
-      # else:
-      self.features_by_node_class = features_by_node_class #[195, 45]
+      self.features_by_node_class = features_by_node_class
       self.node_type = node_type
+      self.use_type_aware_bias = use_type_aware_bias
+      # share_encoding came in as a positional bool above; cache it for forward.
+      self.share_encoding = share_encoding
+      self.num_node_types = num_node_types
+      # local_node_types lists the type id of each node in this actor's
+      # local graph, ordered [self, neighbor_1, neighbor_2, ...]. When
+      # None (Phase B and earlier behavior), every node is treated as
+      # type 0 and only the first encoder slot is used.
+      self.local_node_types = local_node_types
 
-      self.encoding_layer = EncoderByType([self.features_by_node_class[0]], #[195]
-                                          encoding_output_size, #64
-                                          act_encoding, #leakyrelu
+      # Encoder construction: per-type when share_encoding=False, single
+      # otherwise. When per-type, both classes' input dimensions must be
+      # present in features_by_node_class.
+      if share_encoding:
+         encoder_inputs = [self.features_by_node_class[0]]
+      else:
+         encoder_inputs = list(self.features_by_node_class[:num_node_types])
+      self.encoding_layer = EncoderByType(encoder_inputs,
+                                          encoding_output_size,
+                                          act_encoding,
                                           device)
-         
-      self.relational_layer = GATModule(self.encoding_layer.out_features, #64
-                                        graph_module_sizes, #[64]
-                                        act_comms, #leakyrelu
-                                        device,
-                                        full_receptive_field,
-                                        gat_n_heads,
-                                        gat_average_last,
-                                        dropout,
-                                        add_self_loops)
-         
-      self.action_layer = ActorLayer(self.relational_layer.out_features+self.encoding_layer.out_features, #64+64
-                                     self.dim_actions, #2
-                                     action_hidden_size, #128/64
-                                     act_action, #leakyrelu
+
+      # GAT construction: type-aware variant when the bias is on; otherwise
+      # the original GATModule (plain torch_geometric.nn.GATConv).
+      if use_type_aware_bias:
+         self.relational_layer = TypeAwareGATModule(
+            self.encoding_layer.out_features,
+            graph_module_sizes,
+            num_node_types=num_node_types,
+            activation=act_comms,
+            device=device,
+            full_receptive_field=full_receptive_field,
+            n_heads=gat_n_heads,
+            average_last=gat_average_last,
+            dropout=dropout,
+            add_self_loops=add_self_loops,
+            use_bias=True,
+         )
+      else:
+         self.relational_layer = GATModule(self.encoding_layer.out_features,
+                                           graph_module_sizes,
+                                           act_comms,
+                                           device,
+                                           full_receptive_field,
+                                           gat_n_heads,
+                                           gat_average_last,
+                                           dropout,
+                                           add_self_loops)
+
+      self.action_layer = ActorLayer(self.relational_layer.out_features+self.encoding_layer.out_features,
+                                     self.dim_actions,
+                                     action_hidden_size,
+                                     act_action,
                                      device)
          
 
@@ -162,9 +182,7 @@ class Actor_graph(torch.nn.Module):
       #    self.mixer = VDNMixer()
 
    def forward(self, x):
-      # x: current agent, nearest one in UAV group, nearest one in charger group 3/2
-      # input = x[:, 0, :self.features_by_node_class[self.node_type]]
-
+      # x: current agent + neighbors. Shape [bs, 1 + n_neighbors, obs_dim].
       edge_index = [[], []]
       n_agents = x.shape[1]
       for i in range(n_agents):
@@ -185,31 +203,50 @@ class Actor_graph(torch.nn.Module):
          loader = Batch.from_data_list(data_list)
          x = loader.x
          edge_index = loader.edge_index
-      
-      # share encoding
-      node_type = [0] * bs * n_agents
-      input_by_class = {}
-      node_type = torch.tensor(node_type, device=self.device, dtype=torch.int)
 
+      # Build the per-node type tensor.
+      # When self.local_node_types is provided (Phase C), tile it across
+      # the batch so each subgraph's nodes carry their correct type id.
+      # When it is None, fall back to the legacy "everything is type 0"
+      # behavior so older callers stay green.
+      if self.local_node_types is not None:
+         per_graph_types = torch.tensor(
+            self.local_node_types, device=self.device, dtype=torch.long
+         )
+         node_type = per_graph_types.repeat(bs)
+      else:
+         node_type = torch.zeros(bs * n_agents, device=self.device, dtype=torch.long)
+
+      input_by_class = {}
       for nt in node_type.unique():
-         # grab nodes of the current class
          node_mask = (node_type == nt)
-         # grab features only of those nodes, remove padding
-         in_size = self.features_by_node_class[int(nt)]
-         input_by_class[int(nt)] = x[node_mask, :in_size]
+         # Map node-type id to the corresponding encoder slot. When
+         # share_encoding=True, every type maps to slot 0; otherwise the
+         # encoder has one slot per type and we read each type's own
+         # input width.
+         enc_slot = 0 if self.share_encoding else int(nt)
+         in_size = self.features_by_node_class[enc_slot]
+         input_by_class[enc_slot] = x[node_mask, :in_size]
       del node_mask
 
       indices = torch.arange(0, x.shape[0], n_agents)
-      # apply encoding layer, output is a single tensor of size n_agents x encoding_size
-      y = self.encoding_layer(input_by_class, node_type)
+      # Encoder expects keys to be node-class ids. When share_encoding=True
+      # all nodes are remapped to a single class id of 0 before encoding.
+      encoder_node_type = (
+         node_type
+         if not self.share_encoding
+         else torch.zeros_like(node_type)
+      )
+      y = self.encoding_layer(input_by_class, encoder_node_type)
       del input_by_class
 
       input = y[indices]
 
-      # if the communication layer exists, apply it to the data
-      # output is also a single tensor of size n_agents x comms_output_size
       if self.relational_layer is not None:
-         y = self.relational_layer(y, edge_index)
+         if self.use_type_aware_bias:
+            y = self.relational_layer(y, edge_index, node_type)
+         else:
+            y = self.relational_layer(y, edge_index)
 
       cur_y = y[indices]
       y = torch.cat((input, cur_y), dim=1)
@@ -258,39 +295,75 @@ class Critic(torch.nn.Module):
                 gat_n_heads: int = 1,
                 gat_average_last: bool = False,
                 dropout: int = 0,
-                add_self_loops: bool = True
+                add_self_loops: bool = True,
+                # Phase C parametrization. Defaults preserve pre-Phase-C behavior.
+                use_type_aware_bias: bool = False,
+                num_node_types: int = 2,
                 ):
       super().__init__()
       self.device = device
       self.n_agents = len(node_types)
-      individual_node_types = torch.tensor(node_types, device=device)
-      shared_node_types = torch.zeros(len(node_types), device=device, dtype=torch.int)
+      individual_node_types = torch.tensor(node_types, device=device, dtype=torch.long)
+      shared_node_types = torch.zeros(len(node_types), device=device, dtype=torch.long)
 
+      self.share_encoding = share_encoding
+      self.use_type_aware_bias = use_type_aware_bias
+      self.num_node_types = num_node_types
+
+      # The encoder routing tensor: which encoder slot each agent maps to.
+      # When sharing, everything maps to slot 0; otherwise to its own type id.
       if share_encoding:
          self.node_types_encoding = shared_node_types
       else:
          self.node_types_encoding = individual_node_types
 
+      # The full per-node type tensor used for type-aware GAT bias lookup.
+      # Always the individual ids regardless of share_encoding, since the
+      # GAT bias and the encoder routing are independent ablation knobs.
+      self.full_node_types = individual_node_types
+
       self.features_by_node_class = features_by_node_class
       self.node_type = node_type
 
-      self.encoding_layer = EncoderByType([self.features_by_node_class[0]], #[195]
-                                          encoding_output_size, #128
+      # Encoder construction: one slot per type when share_encoding=False,
+      # a single slot otherwise.
+      if share_encoding:
+         encoder_inputs = [self.features_by_node_class[0]]
+      else:
+         encoder_inputs = list(self.features_by_node_class[:num_node_types])
+      self.encoding_layer = EncoderByType(encoder_inputs,
+                                          encoding_output_size,
                                           act_encoding,
                                           device)
-         
-      self.relational_layer = GATModule(self.encoding_layer.out_features, #128
-                                           graph_module_sizes, #[128]
-                                           act_comms,
-                                           device,
-                                           full_receptive_field,
-                                           gat_n_heads,
-                                           gat_average_last,
-                                           dropout,
-                                           add_self_loops)
-         
-      self.action_layer = CriticLayer(self.relational_layer.out_features+self.encoding_layer.out_features, #128+197/47
-                                       action_hidden_size, #128/64
+
+      # GAT: type-aware variant when bias flag is on, else vanilla GATModule.
+      if use_type_aware_bias:
+         self.relational_layer = TypeAwareGATModule(
+            self.encoding_layer.out_features,
+            graph_module_sizes,
+            num_node_types=num_node_types,
+            activation=act_comms,
+            device=device,
+            full_receptive_field=full_receptive_field,
+            n_heads=gat_n_heads,
+            average_last=gat_average_last,
+            dropout=dropout,
+            add_self_loops=add_self_loops,
+            use_bias=True,
+         )
+      else:
+         self.relational_layer = GATModule(self.encoding_layer.out_features,
+                                              graph_module_sizes,
+                                              act_comms,
+                                              device,
+                                              full_receptive_field,
+                                              gat_n_heads,
+                                              gat_average_last,
+                                              dropout,
+                                              add_self_loops)
+
+      self.action_layer = CriticLayer(self.relational_layer.out_features+self.encoding_layer.out_features,
+                                       action_hidden_size,
                                        act_action,
                                        device)
 
@@ -317,31 +390,35 @@ class Critic(torch.nn.Module):
 
       y = loader.x
       edge_index_y = loader.edge_index
-      
+
       input_by_class = {}
-      batch_node_types_encoding = self.node_types_encoding.repeat(bs)#[0,0,1...]
+      batch_node_types_encoding = self.node_types_encoding.repeat(bs)
+      batch_full_node_types = self.full_node_types.repeat(bs)
 
       for nt in self.node_types_encoding.unique():
-         # grab nodes of the current class
          node_mask = (batch_node_types_encoding == nt)
-         # grab features only of those nodes, remove padding
+         # When share_encoding=True every node id maps to slot 0; otherwise
+         # the encoder has one slot per type and we index by node type.
          in_size = self.features_by_node_class[int(nt)]
          input_by_class[int(nt)] = y[node_mask, :in_size]
       del node_mask
 
       indices = torch.arange(index, y.shape[0], self.n_agents)
-      
+
       y = self.encoding_layer(input_by_class, batch_node_types_encoding)
       del input_by_class
 
       input = y[indices]
 
       if self.relational_layer is not None:
-         y = self.relational_layer(y, edge_index_y)
-      
+         if self.use_type_aware_bias:
+            y = self.relational_layer(y, edge_index_y, batch_full_node_types)
+         else:
+            y = self.relational_layer(y, edge_index_y)
+
       cur_y = y[indices]
       cur_y = torch.cat((input, cur_y), 1)
-      values = self.action_layer(cur_y) 
+      values = self.action_layer(cur_y)
 
       return values
    
