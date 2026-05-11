@@ -49,14 +49,18 @@ class PybulletRunner(ABC):
     本类整合了基于 PyBullet 的多智能体仿真环境与 MADDPG 控制器，
     实现训练与评估全流程，包括配置加载、环境初始化、训练循环、日志记录及检查点保存。
     """
-    def __init__(self, resume_run, if_render, device='cpu'):
+    def __init__(self, resume_run, if_render, device='cpu', overrides=None, run_tag=None):
         """
         初始化 PybulletRunner 对象
 
         参数:
-            resume_run: 布尔值，是否从之前的检查点恢复训练
-            if_render: 布尔值，是否启用 PyBullet 的 GUI 渲染
-            device: 设备类型，'cpu' 或 'cuda'
+            resume_run: 是否从之前的检查点恢复训练
+            if_render:  是否启用 PyBullet 的 GUI 渲染
+            device:     设备类型，'cpu' 或 'cuda'
+            overrides:  dict 覆盖, 在 YAML 配置加载之后写入 self.param_dict, 用于
+                        CLI 控制 N_EPISODES / MAX_STEPS / RANDOM_SEED 等
+            run_tag:    str 可选, 当不为 None 时, checkpoint 目录命名为
+                        {LOG_DIR}/logs/{run_tag}/, 便于多次实验区分 (E0 70 runs 用)
         """
         # 1. 加载配置文件，将 config 目录下所有 YAML 文件参数合并到 param_dict 中
         self.param_dict = {}
@@ -66,10 +70,16 @@ class PybulletRunner(ABC):
             with open(file_path, "r", encoding="utf-8") as f:
                 param_dict_current = load(f, Loader=Loader)
             self.param_dict.update(param_dict_current)
-        
+        # Apply CLI / programmatic overrides (used by E0 launchers and the
+        # dry-run smoke test). These take precedence over the YAML defaults.
+        if overrides:
+            self.param_dict.update(overrides)
+
         self.device = device
         # 检查点文件目录：LOG_DIR/logs/
         self.checkpoint_file = path.join(self.param_dict["LOG_DIR"], 'logs/')
+        # store run_tag for later use when picking the checkpoint dir name
+        self._run_tag = run_tag
         self.step_num = 0
         self.episode_num = 0
         previous_step_num = 0
@@ -81,10 +91,12 @@ class PybulletRunner(ABC):
             checkpoint = torch.load(resume_path, map_location=self.device)
             self.checkpoint_dir = latest_logdir(self.checkpoint_file)
         else:
-            # 若不恢复，则创建新的检查点目录，目录名为当前日期时间格式
-            self.checkpoint_dir = path.join(self.checkpoint_file, datetime.now().strftime('%Y%m%d-%H:%M:%S'))
+            # 若不恢复，则创建新的检查点目录。优先使用 run_tag 作为目录名,
+            # 否则回落到时间戳。这样 E0 launcher 可以稳定命名每次实验。
+            dir_name = self._run_tag if self._run_tag else datetime.now().strftime('%Y%m%d-%H:%M:%S')
+            self.checkpoint_dir = path.join(self.checkpoint_file, dir_name)
             if not path.exists(self.checkpoint_dir):
-                os.mkdir(self.checkpoint_dir)
+                os.makedirs(self.checkpoint_dir, exist_ok=True)
         
         self.step_num += previous_step_num
 
