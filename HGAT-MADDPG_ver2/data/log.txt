@@ -30,3 +30,67 @@ The expanded size of the tensor (600) must match the existing size (624) at non-
   File "/home/star/Yanjun/YJ-MADDPG/HGAT-MADDPG_ver2/env/sensingEnv.py", line 509, in reset
     global_x[index], adj[index] = robot.get_observation(UAV_pos, charger_pos, 0, None)
 RuntimeError: The expanded size of the tensor (600) must match the existing size (624) at non-singleton dimension 0.  Target sizes: [600].  Tensor sizes: [624]
+The expanded size of the tensor (624) must match the existing size (630) at non-singleton dimension 0.  Target sizes: [624].  Tensor sizes: [630]Traceback (most recent call last):
+  File "/home/star/Yanjun/YJ-MADDPG/HGAT-MADDPG_ver2/train.py", line 257, in <module>
+    runner.run()
+  File "/home/star/Yanjun/YJ-MADDPG/HGAT-MADDPG_ver2/train.py", line 116, in run
+    current_state, cur_adj = self.env.reset()
+  File "/home/star/Yanjun/YJ-MADDPG/HGAT-MADDPG_ver2/env/sensingEnv.py", line 509, in reset
+    global_x[index], adj[index] = robot.get_observation(UAV_pos, charger_pos, 0, None)
+RuntimeError: The expanded size of the tensor (624) must match the existing size (630) at non-singleton dimension 0.  Target sizes: [624].  Tensor sizes: [630]
+The expanded size of the tensor (630) must match the existing size (638) at non-singleton dimension 0.  Target sizes: [630].  Tensor sizes: [638]Traceback (most recent call last):
+  File "/home/star/Yanjun/YJ-MADDPG/HGAT-MADDPG_ver2/train.py", line 257, in <module>
+    runner.run()
+  File "/home/star/Yanjun/YJ-MADDPG/HGAT-MADDPG_ver2/train.py", line 116, in run
+    current_state, cur_adj = self.env.reset()
+  File "/home/star/Yanjun/YJ-MADDPG/HGAT-MADDPG_ver2/env/sensingEnv.py", line 511, in reset
+    global_x[index + self.NUM_DRONE], adj[index + self.NUM_DRONE] = charger.get_observation(UAV_pos, charger_pos, UAV_energy, 0, None)
+RuntimeError: The expanded size of the tensor (630) must match the existing size (638) at non-singleton dimension 0.  Target sizes: [630].  Tensor sizes: [638]
+The expanded size of the tensor (624) must match the existing size (630) at non-singleton dimension 0.  Target sizes: [624].  Tensor sizes: [630]Traceback (most recent call last):
+  File "/home/star/Yanjun/YJ-MADDPG/HGAT-MADDPG_ver2/train.py", line 257, in <module>
+    runner.run()
+  File "/home/star/Yanjun/YJ-MADDPG/HGAT-MADDPG_ver2/train.py", line 116, in run
+    current_state, cur_adj = self.env.reset()
+  File "/home/star/Yanjun/YJ-MADDPG/HGAT-MADDPG_ver2/env/sensingEnv.py", line 514, in reset
+    global_x[index], adj[index] = robot.get_observation(UAV_pos, charger_pos, 0, None)
+RuntimeError: The expanded size of the tensor (624) must match the existing size (630) at non-singleton dimension 0.  Target sizes: [624].  Tensor sizes: [630]
+The expanded size of the tensor (624) must match the existing size (630) at non-singleton dimension 0.  Target sizes: [624].  Tensor sizes: [630]Traceback (most recent call last):
+  File "/home/star/Yanjun/YJ-MADDPG/HGAT-MADDPG_ver2/train.py", line 257, in <module>
+    runner.run()
+  File "/home/star/Yanjun/YJ-MADDPG/HGAT-MADDPG_ver2/train.py", line 116, in run
+    current_state, cur_adj = self.env.reset()
+  File "/home/star/Yanjun/YJ-MADDPG/HGAT-MADDPG_ver2/env/sensingEnv.py", line 510, in reset
+    global_x[index], adj[index] = robot.get_observation(UAV_pos, charger_pos, 0, None)
+RuntimeError: The expanded size of the tensor (624) must match the existing size (630) at non-singleton dimension 0.  Target sizes: [624].  Tensor sizes: [630]
+'ChargeUAV' object has no attribute 'detect_dilemma'Traceback (most recent call last):
+  File "/home/star/Yanjun/YJ-MADDPG/HGAT-MADDPG_ver2/train.py", line 257, in <module>
+    runner.run()
+  File "/home/star/Yanjun/YJ-MADDPG/HGAT-MADDPG_ver2/train.py", line 135, in run
+    state_, adj_, reward, done, energy_consumption = self.env.step(actions, i_step, np.array(self.trajectory))
+  File "/home/star/Yanjun/YJ-MADDPG/HGAT-MADDPG_ver2/env/sensingEnv.py", line 403, in step
+    global_x[index + self.NUM_DRONE], adj[index + self.NUM_DRONE] = charger.get_observation(UAV_pos, charger_pos, after_UAV_energy, curr_step, trajectory[:, index + self.NUM_DRONE])
+  File "/home/star/Yanjun/YJ-MADDPG/HGAT-MADDPG_ver2/env/robot.py", line 507, in get_observation
+    dilemma = torch.tensor([self.detect_dilemma(history_trajectory, currentPos)]).to(self.device)
+AttributeError: 'ChargeUAV' object has no attribute 'detect_dilemma'
+'ChargeUAV' object has no attribute 'sensing_insection_percentage'Traceback (most recent call last):
+  File "/home/star/Yanjun/YJ-MADDPG/HGAT-MADDPG_ver2/train.py", line 257, in <module>
+    runner.run()
+  File "/home/star/Yanjun/YJ-MADDPG/HGAT-MADDPG_ver2/train.py", line 135, in run
+    state_, adj_, reward, done, energy_consumption = self.env.step(actions, i_step, np.array(self.trajectory))
+  File "/home/star/Yanjun/YJ-MADDPG/HGAT-MADDPG_ver2/env/sensingEnv.py", line 403, in step
+    global_x[index + self.NUM_DRONE], adj[index + self.NUM_DRONE] = charger.get_observation(UAV_pos, charger_pos, after_UAV_energy, curr_step, trajectory[:, index + self.NUM_DRONE])
+  File "/home/star/Yanjun/YJ-MADDPG/HGAT-MADDPG_ver2/env/robot.py", line 529, in get_observation
+    dilemma = torch.tensor([self.detect_dilemma(history_trajectory, currentPos)]).to(self.device)
+  File "/home/star/Yanjun/YJ-MADDPG/HGAT-MADDPG_ver2/env/robot.py", line 413, in detect_dilemma
+    result_sensing_insection_percentage = [
+  File "/home/star/Yanjun/YJ-MADDPG/HGAT-MADDPG_ver2/env/robot.py", line 414, in <listcomp>
+    self.sensing_insection_percentage(curr_pos, history_trajectory[i])
+AttributeError: 'ChargeUAV' object has no attribute 'sensing_insection_percentage'
+The expanded size of the tensor (624) must match the existing size (180) at non-singleton dimension 0.  Target sizes: [624].  Tensor sizes: [180]Traceback (most recent call last):
+  File "/home/star/Yanjun/YJ-MADDPG/HGAT-MADDPG_ver2/train.py", line 257, in <module>
+    total_energy_consumption_moving = total_all_energy_consumption[2]
+  File "/home/star/Yanjun/YJ-MADDPG/HGAT-MADDPG_ver2/train.py", line 116, in run
+    self.param_dict["NUM_CHARGER"],
+  File "/home/star/Yanjun/YJ-MADDPG/HGAT-MADDPG_ver2/env/sensingEnv.py", line 510, in reset
+    global_x[index], adj[index] = robot.get_observation(UAV_pos, charger_pos, 0, None)
+RuntimeError: The expanded size of the tensor (624) must match the existing size (180) at non-singleton dimension 0.  Target sizes: [624].  Tensor sizes: [180]

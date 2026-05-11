@@ -17,11 +17,11 @@ if __name__ == "__main__":
         [1, 0.84, 0] # 土黄
     ]
 
-    param_path = "./config/task.yaml"
+    param_path = "/home/star/Yanjun/YJ-MADDPG/HGAT-MADDPG_ver2/config/task.yaml"
     param_dict = load(open(param_path, "r", encoding="utf-8"), Loader=Loader)
     # 设置随机数种子
     np.random.seed(param_dict["RANDOM_SEED"])
-    cid = p.connect(p.GUI)
+    cid = p.connect(p.DIRECT)
     scence = Scence()
     scence.construct()
     p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
@@ -34,7 +34,7 @@ if __name__ == "__main__":
 
     # file_path = "./data/eval/trajectory_max_totalDataCollected.txt"
     # file_path = "/Users/ff0kk/learn/群值感知/hk/mine2/AAAC_v0.1_3_i_mR_SF_RB_OH_UA2_UC1_PER_mi_BS_aSP_DD_v2_aSPA/data/eval/eval_perStep/9_0.9534063100233414_trajectory.txt"
-    file_path = "./data/tra/trajectory_2854.json"
+    file_path = "/home/star/Yanjun/YJ-MADDPG/HGAT-MADDPG_ver2/data/tra/trajectory_2854.json"
     with open(file_path, "r") as file:
         trajectory_data = file.read()
     trajectory_data = np.array((json.loads(trajectory_data)))
@@ -62,9 +62,9 @@ if __name__ == "__main__":
         projectionMatrix=projectionMatrix)
     rgbPixels = np.array(rgbPixels).reshape(w, h, 4)
     plt.imshow(rgbPixels)
-    # plt.title("rgbPixels")
+    plt.title("rgbPixels")
     plt.axis("off")
-    # plt.savefig("./test.pdf")
+    plt.savefig("./test.pdf")
 
     print("done")
     time.sleep(20)

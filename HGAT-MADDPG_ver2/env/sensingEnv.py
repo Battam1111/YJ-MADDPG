@@ -505,6 +505,7 @@ class SensingEnv(gym.Env):
         UAV_energy = [[robot.electricity, robot.charged_energy] for robot in self.robot]
         global_x = torch.zeros((self.NUM_DRONE + self.NUM_CHARGER, self.DIMENSION_OBS[0]), dtype=torch.float32, device=self.device)
         adj = torch.zeros((self.NUM_DRONE + self.NUM_CHARGER, 2), dtype=torch.int64, device=self.device)
+
         for index, robot in enumerate(self.robot):
             global_x[index], adj[index] = robot.get_observation(UAV_pos, charger_pos, 0, None)
         for index, charger in enumerate(self.charger):

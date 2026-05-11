@@ -101,3 +101,19 @@ The expanded size of the tensor (519) must match the existing size (524) at non-
   File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/env/sensingEnv.py", line 484, in reset
     global_x[index], adj[index] = robot.get_observation(UAV_pos, charger_pos, 0, None)
 RuntimeError: The expanded size of the tensor (519) must match the existing size (524) at non-singleton dimension 0.  Target sizes: [519].  Tensor sizes: [524]
+The expanded size of the tensor (624) must match the existing size (180) at non-singleton dimension 0.  Target sizes: [624].  Tensor sizes: [180]Traceback (most recent call last):
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/train.py", line 250, in <module>
+    runner.run()
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/train.py", line 100, in run
+    current_state = self.env.reset()
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/env/sensingEnv.py", line 484, in reset
+    global_x[index], adj[index] = robot.get_observation(UAV_pos, charger_pos, 0, None)
+RuntimeError: The expanded size of the tensor (624) must match the existing size (180) at non-singleton dimension 0.  Target sizes: [624].  Tensor sizes: [180]
+The expanded size of the tensor (624) must match the existing size (180) at non-singleton dimension 0.  Target sizes: [624].  Tensor sizes: [180]Traceback (most recent call last):
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/train.py", line 251, in <module>
+    runner.run()
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/train.py", line 101, in run
+    current_state = self.env.reset()
+  File "/home/star/Yanjun/YJ-MADDPG/hcanet-3.27_maddpg/env/sensingEnv.py", line 484, in reset
+    global_x[index], adj[index] = robot.get_observation(UAV_pos, charger_pos, 0, None)
+RuntimeError: The expanded size of the tensor (624) must match the existing size (180) at non-singleton dimension 0.  Target sizes: [624].  Tensor sizes: [180]

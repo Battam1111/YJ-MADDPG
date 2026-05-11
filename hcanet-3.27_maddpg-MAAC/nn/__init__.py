@@ -1,1 +1,1 @@
-from .nets import HeteroMAGNet
+# from .nets import HeteroMAGNet

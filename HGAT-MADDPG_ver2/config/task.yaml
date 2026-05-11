@@ -2,7 +2,7 @@ RANDOM_SEED : 2021                        # 随机数种子
 
 EPISODE_START_SAVE : 400                  # episode > EPISODE_START_SAVE, 则开始eval并保存模型
 
-NUM_DRONE : 2                             # 无人机数量
+NUM_DRONE : 3                             # 无人机数量
 
 N_STEP_RETURN : 3
 
@@ -11,8 +11,8 @@ N_STEP_RETURN : 3
 
 # 动作设置
 DIMENSION_ACTION : [2, 2]                   # 动作值维度
-# DIMENSION_OBS : [180, 40]
-DIMENSION_OBS : [624, 40]                   # 全局dim
+DIMENSION_OBS : [180, 40]
+# DIMENSION_OBS : [624, 40]                   # 全局dim
 
 # drone初始参数
 DEPARTURE_POS :  [-2, -2, 2]                # 起点坐标[[2, -5, 2], [4, 3, 2], [-4, -1, 2]] 
@@ -91,7 +91,7 @@ MOVE_COMSUMPTION : 1                      # 移动单位距离所消耗电量
 MAX_ENERGY_CONCUMPTION_PER_STEP : 1.3     # 单步最大能量消耗量[1.3, 1.6, 1.9]
 
 # 充电
-NUM_CHARGER : 1
+NUM_CHARGER : 2                       # 充电无人机数量
 DEPARTURE_POS_CHARGER : [[0, -5, 1], [1, 5, 1]] #0 -5
 CHARGE_RANGE : 1.5
 ENERGY_PERSTEP : 0.004
@@ -107,8 +107,8 @@ PENALTY_NOT_CHARGE : 100
 WEI : 0.5
 
 # 激光参数
-# LASER_LENGTH : 4.                         # 局部激光长度
-LASER_LENGTH : 16.                         # 全局激光长度
+LASER_LENGTH : 4.                         # 局部激光长度
+# LASER_LENGTH : 16.                         # 全局激光长度
 LASER_NUM_HORIZONTAL : 24                 # 水平激光数量
 LASER_NUM_VERTICAL : 10                   # 竖直激光数量
 

@@ -1,4 +1,4 @@
-from utils import action_normalize
+from utils.utils import action_normalize
 import torch
 import torch.nn.functional as F
 
